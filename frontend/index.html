@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abudabee Hotel Booking</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; text-align: center; }
+        .card { background: white; padding: 20px; margin: 10px auto; width: 300px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        button { background-color: #28a745; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px;}
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <h1>Welcome to Abudabee Hotel 🌴</h1>
+    <p>ค้นหาและจองห้องพักที่ดีที่สุดสำหรับคุณ</p>
+    <div id="room-list">กำลังโหลดข้อมูลห้องพัก...</div>
+
+    <script>
+        // กำหนด URL ของ Backend (เดี๋ยวเราจะเชื่อมกันใน Kubernetes)
+        const BACKEND_URL = 'http://localhost:30050'; 
+
+        async function fetchRooms() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/rooms`);
+                const rooms = await response.json();
+                const container = document.getElementById('room-list');
+                container.innerHTML = '';
+                
+                rooms.forEach(room => {
+                    const status = room.available ? 'ว่าง' : 'ถูกจองแล้ว';
+                    const btnHtml = room.available 
+                        ? `<button onclick="bookRoom('${room._id}')">จองเลย</button>` 
+                        : `<button disabled>เต็มแล้ว</button>`;
+
+                    container.innerHTML += `
+                        <div class="card">
+                            <h3>${room.name}</h3>
+                            <p>ราคา: ${room.price} บาท/คืน</p>
+                            <p>สถานะ: ${status}</p>
+                            ${btnHtml}
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                document.getElementById('room-list').innerHTML = 'ไม่สามารถเชื่อมต่อระบบหลังบ้านได้';
+            }
+        }
+
+        async function bookRoom(id) {
+            await fetch(`${BACKEND_URL}/api/book`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            alert('จองสำเร็จ! รอรับการยืนยัน');
+            fetchRooms(); // โหลดข้อมูลใหม่
+        }
+
+        fetchRooms();
+    </script>
+</body>
+</html>

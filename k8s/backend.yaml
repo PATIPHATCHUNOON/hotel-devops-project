@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: beampuriku/abudabee-backend:latest # ชื่อ Image ที่เราจะ Build ใน Part ถัดไป
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongo:27017/abudabee" # เชื่อมต่อไปยัง Service ของ mongo ด้านบน
+        resources:
+          requests:
+            cpu: "50m" # สำคัญมาก! ต้องกำหนด CPU เพื่อให้ Auto-scale คำนวณได้
+          limits:
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  type: NodePort # เปิดพอร์ตให้ออกมานอก Kubernetes
+  selector:
+    app: backend
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30050 
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 1
+  maxReplicas: 5 # ขยายได้สูงสุด 5 ตัว
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50 # ถ้า CPU ทำงานเกิน 50% ให้สร้าง Pod ใหม่เพิ่มทันที
